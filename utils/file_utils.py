@@ -21,11 +21,11 @@ def crush_png_files(file_dir):
                 f'/usr/local/bin/pngcrush -ow -rem allb -reduce {path} > /dev/null 2>&1')
             bar()
 
-def select_unique_files(file_dir):
+def select_unique_files(file_path_list):
     unique_names = set()
     unique_paths = []
 
-    for file_path in file_dir:
+    for file_path in file_path_list:
         if os.path.basename(file_path) not in unique_names:
             unique_names.add(os.path.basename(file_path))
             unique_paths.append(file_path)

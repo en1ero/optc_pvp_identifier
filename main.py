@@ -1,14 +1,13 @@
 from utils.file_utils import make_file_list, select_unique_files, make_id_path_dictionary
 from utils.image_utils import getMatchesFromScreenshots, make_template_from_image, create_perceptual_hashes, build_ranked_collage, buildCollage
 from utils.stats_utils import get_ids, make_teams 
-# from PIL import Image
-# import math, os
+
 
 
 if __name__ == '__main__':
 
     # Look for every file path that ends on '.png' in directory and just keep unique file paths
-    file_list = make_file_list('git/optc-db.github.io/api/images/thumbnail', '.png')
+    file_list = make_file_list('optc-db.github.io/api/images/thumbnail', '.png')
     unique_file_list = select_unique_files(file_list)
     path_dict = make_id_path_dictionary(file_list)
 
@@ -21,7 +20,7 @@ if __name__ == '__main__':
 
     matches = getMatchesFromScreenshots(screenshot_list, template, hashes)
 
-    buildCollage(matches)
+    # buildCollage(matches)
 
     id_raw, counted = get_ids(matches)
 

@@ -1,9 +1,11 @@
 from collections import Counter
-import itertools,os
+import itertools
+import os
 
 def get_ids(matches):
     id_raw = [os.path.basename(s)[:-4] for s in matches]
     counted = Counter(id_raw)
+    print(f'Number of individual units: {len(counted)-1}')
     return id_raw, counted
 
 def make_teams(id_raw, matches):
@@ -18,7 +20,7 @@ def make_counter(teams, num):
     for i in range(len(teams)):
         combinations = list(itertools.combinations(teams[i], num))
         counter.extend(combinations)
-
+    print(f'Number of units per Team: {len(counter)/99:.2f}')
     return Counter(counter)
 
 
