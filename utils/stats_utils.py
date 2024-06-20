@@ -20,7 +20,6 @@ def make_counter(teams, num):
     for i in range(len(teams)):
         combinations = list(itertools.combinations(teams[i], num))
         counter.extend(combinations)
-    print(f'Number of units per Team: {len(counter)/99:.2f}')
+    if num == 1:
+        print(f'Number of units per Team: {len(counter)/99:.2f}')
     return Counter(counter)
-
-

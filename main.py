@@ -27,5 +27,6 @@ if __name__ == '__main__':
     teams = make_teams(id_raw, matches)
 
     # Collage Time !!
-    for i in range(1, 9):
-        build_ranked_collage(teams, path_dict, i, 20)
+    n_rows = 100
+    team_comps = 8
+    build_ranked_collage(teams, path_dict, n_rows, team_comps)

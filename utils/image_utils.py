@@ -6,6 +6,7 @@ from imagehash import phash
 from PIL import Image, ImageOps, ImageFont, ImageDraw
 import os
 import platform
+import datetime
 
 from utils.stats_utils import make_counter
 
@@ -128,24 +129,29 @@ def overlay_image(img, overlay):
     return Image.alpha_composite(img, overlay)
 
 
-def build_ranked_collage(teams, path_dict, col, rows):
-    mc = make_counter(teams, col).most_common(rows)
-    s = 112
-    crop = 14
-    w = 92
-    new = Image.new("RGBA", (w*col, s*rows - 20))
-    num = Image.new("RGBA", (w, s*rows - 20))
-    draw = ImageDraw.Draw(num)
-    if platform.system() == "Windows":
-        font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 50)
-    else:
-        font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 50)
+def build_ranked_collage(teams, path_dict, rows, n_team_comps):
+    images = []
+    final_width = 0
+    spacing_hor = 92
+    rows_collage = rows
 
-    if len(mc) < rows:
-        rows = len(mc)
-        print(f"Only {rows} teams available in col {col}.")
+    for col in range(1,n_team_comps+1):
+        mc = make_counter(teams, col).most_common(rows)
+        s = 112
+        crop = 14
+        w = 92
+        new = Image.new("RGBA", (w*col, s*rows - 20))
+        num = Image.new("RGBA", (w, s*rows - 20))
+        draw = ImageDraw.Draw(num)
+        if platform.system() == "Windows":
+            font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 50)
+        else:
+            font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 50)
 
-    if col > 1:
+        if len(mc) < rows:
+            rows = len(mc)
+            print(f"Only {rows} teams available in col {col}.")
+
         for i in range(col):
             for j in range(rows):
                 img = Image.open(path_dict[mc[j][0][i]]).convert("RGBA")
@@ -157,19 +163,22 @@ def build_ranked_collage(teams, path_dict, col, rows):
                 img = ImageOps.expand(img, border=padding, fill=(0, 0, 0, 0))
                 img = overlay_image(img, overlay)
                 new.paste(img, (w * i, s * j))
-                draw.text((s//2, s * j + s//2), str(mc[j][1]), fill="white", font=font, anchor="mm", align="right")
-    else:
-        for j in range(rows):
-            img = Image.open(path_dict[mc[j][0][0]]).convert("RGBA")
-            r, g, b, _ = img.getpixel((32, 19))
-            closest_color = get_closest_color(r, g, b)
-            overlay = Image.open(overlay_images[closest_color])
-            img = img.crop((crop, crop, img.width - crop, img.height - crop))
-            padding = (overlay.width - img.width) // 2
-            img = ImageOps.expand(img, border=padding, fill=(0, 0, 0, 0))
-            img = overlay_image(img, overlay)
-            new.paste(img, (0, s * j))
-            draw.text((s//2, s * j + s//2), str(mc[j][1]), fill="white", font=font, anchor="mm", align="right")
+                draw.text((w//2, w//2 + s*j), str(mc[j][1]), fill="white", font=font, anchor="mm", align="right")
 
-    new.save(f'results/ranked_combinations/{col}.png')
-    num.save(f'results/ranked_combinations/{col}_num.png')
+        # concat new and num horizontally with spacing_hor
+        new_num = Image.new("RGBA", (w*col + w, s*rows - 20))
+        new_num.paste(new, (w, 0))
+        new_num.paste(num, (0, 0))
+        images.append(new_num)
+        final_width += new_num.width + spacing_hor
+
+    final = Image.new("RGBA", (final_width, s*rows_collage - 20))
+    pos_hor = 0
+    for i in range(n_team_comps):
+        final.paste(images[i], (pos_hor, 0))
+        pos_hor += images[i].width + spacing_hor
+
+    now = datetime.datetime.now()
+    file_name = f'{now.strftime("%Y_%m_%d")}.png'
+    result_dir = os.path.join('results', 'ranked_combinations')
+    final.save(os.path.join(result_dir, file_name))
