@@ -1,0 +1,2 @@
+Put screenshots of OPTC rumble ranking in /images/screenshots and run main.py to generate ranking of most used units and unit-combinations.
+- Currently only for screenshots from iPhone 11 Pro (pixel positions of unit thumbnails are hard coded)

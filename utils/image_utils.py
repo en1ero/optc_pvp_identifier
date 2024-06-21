@@ -141,13 +141,13 @@ def get_closest_color(r,g,b):
     return closest_color
 
 
-def build_ranked_collage(teams, path_dict, rows, n_team_comps, s=112):
+def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacing_hor=92):
     images = []
     final_width = 0
-    spacing_hor = 92
     rows_collage = rows
-
-    for col in range(1,n_team_comps+1):
+    w = 92
+    
+    for col in range(1, n_max_units+1):
         mc = make_counter(teams, col).most_common(rows)
         new = Image.new("RGBA", (w*col, s*rows - 20))
         num = Image.new("RGBA", (w, s*rows - 20))
@@ -172,7 +172,7 @@ def build_ranked_collage(teams, path_dict, rows, n_team_comps, s=112):
 
     final = Image.new("RGBA", (final_width, s*rows_collage - 20))   
     pos_hor = 0
-    for i in range(n_team_comps):
+    for i in range(n_max_units):
         final.paste(images[i], (pos_hor, 0))
         pos_hor += images[i].width + spacing_hor
 
