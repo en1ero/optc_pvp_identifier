@@ -21,14 +21,19 @@ overlay_images = {
 
 xy = [910, 950, 460, 530]
 
-def make_template_from_image(file_path):
+if platform.system() == "Windows":
+    FONT = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 50)
+else:
+    FONT = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 50)
+
+def make_anchor_from_image(file_path):
     ref = cv2.imread(file_path, 0)
-    template = ref[xy[0]:xy[1], xy[2]:xy[3]]
-    return template
+    anchor_img = ref[xy[0]:xy[1], xy[2]:xy[3]]
+    return anchor_img
 
 
-def get3Teams(img, template, target_hashes, index):
-    resulting_image = match_template(img[:1000, :600], template)
+def get_team_images(img, anchor_img):
+    resulting_image = match_template(img[:1000, :600], anchor_img)
     x, y = np.unravel_index(np.argmax(resulting_image), resulting_image.shape)
 
     # Define the 8 seperate unit areas
@@ -50,10 +55,14 @@ def get3Teams(img, template, target_hashes, index):
         units.append(img[x+x2+i*gap : x+245+i*gap, y-178+off*6+off_s : xy[3]-145+off*6+off_s])
 
     resized_units = [cv2.resize(unit, dsize=(112, 112), interpolation=cv2.INTER_CUBIC) for unit in units]
+    return resized_units
+
+
+def get_matches(unit_images, target_hashes, index):
     matches = []
-    with alive_bar(len(units), title=f'Finding matches for 3 Teams from image {index+1}/33') as bar:
-        for img in resized_units:
-            current_hash = phash(Image.fromarray(img, 'L'), hash_size=16)
+    with alive_bar(len(unit_images), title=f'Finding matches for 3 Teams from image {index+1}/33') as bar:
+        for unit_img in unit_images:
+            current_hash = phash(Image.fromarray(unit_img, 'L'), hash_size=16)
 
             best_match = None
             best_difference = 256
@@ -68,16 +77,21 @@ def get3Teams(img, template, target_hashes, index):
     return matches
 
 
-def getMatchesFromScreenshots(screenshot_list, template, hashes):
+def getMatchesFromScreenshots(screenshot_list, target_hashes):
+    anchor_image = make_anchor_from_image('images/anchor.jpeg')
+
     matches = []
     for index, path in enumerate(screenshot_list):
-        img = cv2.imread(path, 0)
-        matches.extend(get3Teams(img, template, hashes, index))
+        screen_shot = cv2.imread(path, 0)
+        unit_images = get_team_images(screen_shot, anchor_image)
+        matches.extend(get_matches(unit_images, target_hashes, index))
 
-        # Handle Anni Shanks Visual Evolution
-        for i, match in enumerate(matches):
-            if os.path.basename(match) == "4153.png":
-                matches[i] = os.path.join(os.path.dirname(match), "4152.png")
+    # Handle Anni Shanks' & Luffy/Yamato's Alternating Pen Evos
+    for i, match in enumerate(matches):
+        if os.path.basename(match) == "4153.png":
+            matches[i] = os.path.join(os.path.dirname(match), "4152.png")
+        elif os.path.basename(match) == "3877.png":
+            matches[i] = os.path.join(os.path.dirname(match), "3878.png")
 
     return matches
 
@@ -92,23 +106,25 @@ def create_perceptual_hashes(image_file_list):
     return hashes
 
 
-def buildCollage(matches):
-    s = 112
-    col = 8
+def make_overlayed_img(match):
     crop = 14
-    w = 92
-    row = len(matches) // col
-    new = Image.new("RGBA", (s*col, s*row))
-    for i in range(col * row):
-        img = Image.open(matches[i]).convert("RGBA")
-        r, g, b, _ = img.getpixel((32, 19))
-        closest_color = get_closest_color(r, g, b)
-        overlay = Image.open(overlay_images[closest_color])
-        img = img.crop((crop, crop, img.width - crop, img.height - crop))
-        padding = (overlay.width - img.width) // 2
-        img = ImageOps.expand(img, border=padding, fill=(0, 0, 0, 0))
-        img = overlay_image(img, overlay)
-        new.paste(img, (w * (i % col), s * (i // col)))
+    img = Image.open(match).convert("RGBA")
+    r, g, b, _ = img.getpixel((32, 19))
+    closest_color = get_closest_color(r, g, b)
+    overlay = Image.open(overlay_images[closest_color])
+    img = img.crop((crop, crop, img.width - crop, img.height - crop))
+    padding = (overlay.width - img.width) // 2
+    img = ImageOps.expand(img, border=padding, fill=(0, 0, 0, 0))
+    img = Image.alpha_composite(img, overlay)
+    return img
+
+
+def buildCollage(matches, s=112, cols=8):
+    rows = len(matches) // cols
+    new = Image.new("RGBA", (s*cols, s*rows))
+    for i, match in enumerate(matches):
+        img = make_overlayed_img(match)
+        new.paste(img, (img.width * (i % cols), s * (i // cols)))
     new.show()
     
 
@@ -125,11 +141,7 @@ def get_closest_color(r,g,b):
     return closest_color
 
 
-def overlay_image(img, overlay):
-    return Image.alpha_composite(img, overlay)
-
-
-def build_ranked_collage(teams, path_dict, rows, n_team_comps):
+def build_ranked_collage(teams, path_dict, rows, n_team_comps, s=112):
     images = []
     final_width = 0
     spacing_hor = 92
@@ -137,16 +149,9 @@ def build_ranked_collage(teams, path_dict, rows, n_team_comps):
 
     for col in range(1,n_team_comps+1):
         mc = make_counter(teams, col).most_common(rows)
-        s = 112
-        crop = 14
-        w = 92
         new = Image.new("RGBA", (w*col, s*rows - 20))
         num = Image.new("RGBA", (w, s*rows - 20))
         draw = ImageDraw.Draw(num)
-        if platform.system() == "Windows":
-            font = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 50)
-        else:
-            font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 50)
 
         if len(mc) < rows:
             rows = len(mc)
@@ -154,25 +159,18 @@ def build_ranked_collage(teams, path_dict, rows, n_team_comps):
 
         for i in range(col):
             for j in range(rows):
-                img = Image.open(path_dict[mc[j][0][i]]).convert("RGBA")
-                r, g, b, _ = img.getpixel((32, 19))
-                closest_color = get_closest_color(r, g, b)
-                overlay = Image.open(overlay_images[closest_color])
-                img = img.crop((crop, crop, img.width - crop, img.height - crop))
-                padding = (overlay.width - img.width) // 2
-                img = ImageOps.expand(img, border=padding, fill=(0, 0, 0, 0))
-                img = overlay_image(img, overlay)
+                img = make_overlayed_img(path_dict[mc[j][0][i]])
                 new.paste(img, (w * i, s * j))
-                draw.text((w//2, w//2 + s*j), str(mc[j][1]), fill="white", font=font, anchor="mm", align="right")
+                draw.text((img.width//2, img.width//2 + s*j), str(mc[j][1]), fill="white", font=FONT, anchor="mm", align="right")
 
         # concat new and num horizontally with spacing_hor
-        new_num = Image.new("RGBA", (w*col + w, s*rows - 20))
-        new_num.paste(new, (w, 0))
+        new_num = Image.new("RGBA", (img.width*col + img.width, s*rows - 20))
+        new_num.paste(new, (img.width, 0))
         new_num.paste(num, (0, 0))
         images.append(new_num)
         final_width += new_num.width + spacing_hor
 
-    final = Image.new("RGBA", (final_width, s*rows_collage - 20))
+    final = Image.new("RGBA", (final_width, s*rows_collage - 20))   
     pos_hor = 0
     for i in range(n_team_comps):
         final.paste(images[i], (pos_hor, 0))

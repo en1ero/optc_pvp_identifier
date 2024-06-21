@@ -21,6 +21,7 @@ def crush_png_files(file_dir):
                 f'/usr/local/bin/pngcrush -ow -rem allb -reduce {path} > /dev/null 2>&1')
             bar()
 
+
 def select_unique_files(file_path_list):
     unique_names = set()
     unique_paths = []
@@ -32,7 +33,8 @@ def select_unique_files(file_path_list):
         
     return unique_paths
 
-def make_id_path_dictionary(file_paths):
+
+def make_id_path_dict(file_paths):
     dict = {}
     for path in file_paths:
         if os.path.basename(path)[:-4] != 'null':
