@@ -4,7 +4,7 @@ from utils.stats_utils import*
 
 
 
-def main(thumbnail_path, screenshot_path):
+def main(thumbnail_path, screenshot_path, month=6, year=2024):
     # Make file list and perceptual hashes from thumbnail directory
     file_list = make_file_list(thumbnail_path, '.png')
     file_list.append('images/null.png')
@@ -31,7 +31,7 @@ def main(thumbnail_path, screenshot_path):
     buildCollage(matches)
     
     # Counted Units and Combinations
-    build_ranked_collage(teams_list, id_path_dict, rows=50, n_max_units=5)
+    build_ranked_collage(teams_list, id_path_dict, rows=25, n_max_units=5, month=month, year=year)
 
 
 
