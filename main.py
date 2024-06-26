@@ -18,10 +18,11 @@ def main(thumbnail_path, screenshot_path):
     screenshot_list = sorted(screenshot_list)
     
     # Get matches from screenshots and perceptual hashes
-    matches = getMatchesFromScreenshots(screenshot_list, target_hashes)
+    matches = getMatchesFromScreenshots(screenshot_list, target_hashes)    
 
     # Strip file paths from matches to get raw IDs
     id_list, _ = get_ids(matches)
+    team_ids = [id_list[i:i+8] for i in range(0, len(id_list), 8)]
 
     # Translate IDs to Teams of 8 Units 
     teams_list = make_teams(id_list, matches)
@@ -30,7 +31,7 @@ def main(thumbnail_path, screenshot_path):
     buildCollage(matches)
     
     # Counted Units and Combinations
-    build_ranked_collage(teams_list, id_path_dict, rows=25, n_max_units=5)
+    build_ranked_collage(teams_list, id_path_dict, rows=50, n_max_units=5)
 
 
 
@@ -40,3 +41,7 @@ if __name__ == '__main__':
     screenshot_path = os.path.join('images', 'screenshots')
 
     main(thumbnail_path, screenshot_path)
+    
+    
+
+

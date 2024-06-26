@@ -16,7 +16,8 @@ overlay_images = {
         "blue": os.path.join('images', 'overlays', 'qck.png'),
         "yellow": os.path.join('images', 'overlays', 'psy.png'),
         "purple": os.path.join('images', 'overlays', 'int.png'),
-        "black": os.path.join('images', 'overlays', 'dual.png')
+        "black": os.path.join('images', 'overlays', 'dual.png'),
+        "empty": os.path.join('images', 'overlays', 'empty.png')
     }
 
 xy = [910, 950, 460, 530]
@@ -120,11 +121,20 @@ def make_overlayed_img(match):
 
 
 def buildCollage(matches, s=112, cols=8):
-    rows = len(matches) // cols
+    unique_matches = list(set(matches))
+    for i, match in enumerate(unique_matches):
+        img = Image.new("RGBA", (s,s))
+        img = make_overlayed_img(match)
+        img.save(os.path.join('results', 'teams', 'single', f'{i}.png'))
+    rows = len(unique_matches) // cols
     new = Image.new("RGBA", (s*cols, s*rows))
+    new_team = Image.new("RGBA", (s*cols, s))
     for i, match in enumerate(matches):
         img = make_overlayed_img(match)
         new.paste(img, (img.width * (i % cols), s * (i // cols)))
+        new_team.paste(img, (img.width * (i % cols), 0))
+        if i % cols == cols-1:
+            new_team.save(os.path.join('results', 'teams', f'{(i + 1) // cols}.png'))
     new.show()
     
 
@@ -135,7 +145,8 @@ def get_closest_color(r,g,b):
         "blue": (3,98,231),
         "yellow": (255,214,5),
         "purple": (143,17,210),
-        "black": (81,52,51)
+        "black": (81,52,51),
+        "empty": (31, 22, 12)
     }
     closest_color = min(colors, key=lambda color: abs(colors[color][0]-r) + abs(colors[color][1]-g) + abs(colors[color][2]-b))
     return closest_color
