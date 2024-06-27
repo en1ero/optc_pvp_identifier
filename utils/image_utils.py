@@ -26,13 +26,14 @@ xy = [910, 950, 460, 530]
 if platform.system() == "Windows":
     FONT = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 50)
     FONT_RANK = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 75)
-    FONT_SUBSCRIPT = ImageFont.truetype("C:/Windows/Fonts/arialbi.ttf", 16)
-    FONT_SUBTITLE = ImageFont.truetype("C:/Windows/Fonts/arialbi.ttf", 30)
+    FONT_SUBSCRIPT = ImageFont.truetype("C:/Windows/Fonts/ariali.ttf", 16)
+    FONT_SUBTITLE = ImageFont.truetype("C:/Windows/Fonts/ariali.ttf", 30)
 else:
     FONT = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 50)
     FONT_RANK = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 75)
     FONT_SUBSCRIPT = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Italic.ttf", 16)
     FONT_SUBTITLE = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Italic.ttf", 30)
+
 
 def make_anchor_from_image(file_path):
     ref = cv2.imread(file_path, 0)
@@ -188,12 +189,15 @@ def make_power_ranking(counted_range, current_total, month=None, year=None):
 
     count_and_rank_gains = []
     for id_val, _ in counted_range:
-        if previous[id_val[0]]['count'] == 0:
+        if id_val[0] not in previous: 
+            count_gain = None
+            rank_gain = None
+        elif previous[id_val[0]]['count'] == 0:
             count_gain = current[id_val[0]]['count']
             rank_gain = current_total - current[id_val[0]]['rank']
         else:
             count_gain = current[id_val[0]]['count'] - previous[id_val[0]]['count']
-            rank_gain = current[id_val[0]]['rank'] - previous[id_val[0]]['rank']
+            rank_gain =  previous[id_val[0]]['rank'] - current[id_val[0]]['rank']
 
         count_and_rank_gains.append((id_val[0], count_gain, rank_gain))
     return count_and_rank_gains
@@ -201,18 +205,38 @@ def make_power_ranking(counted_range, current_total, month=None, year=None):
 def write_power_ranking_to_collage(count_and_rank_gains, canvas, i, s, w):
     light_red = (255, 144, 128, 200)
     light_green = (144, 255, 144, 200)
-    if count_and_rank_gains[i][2] > 0:
-        canvas.text((s//2*3, s*i + s-16), '+'+str(count_and_rank_gains[i][2]), fill=light_green, font=FONT_SUBSCRIPT, anchor="mm", align="center")
-    elif count_and_rank_gains[i][2] < 0:
-        canvas.text((s//2*3, s*i + s-16), str(count_and_rank_gains[i][2]), fill=light_red, font=FONT_SUBSCRIPT, anchor="mm", align="center")
-    else:
-        pass
-    if count_and_rank_gains[i][1] > 0:
-        canvas.text((s*2 + w//2, s*i + s-16), '+'+str(count_and_rank_gains[i][1]), fill=light_green, font=FONT_SUBSCRIPT, anchor="mm", align="center")
-    elif count_and_rank_gains[i][1] < 0:
-        canvas.text((s*2 + w//2, s*i + s-16), str(count_and_rank_gains[i][1]), fill=light_red, font=FONT_SUBSCRIPT, anchor="mm", align="center")
-    else:
-        pass
+    if count_and_rank_gains[i][2] != None:
+        if count_and_rank_gains[i][2] > 0:
+            canvas.text((s//2*3, s*i + s-16), '+'+str(count_and_rank_gains[i][2]), fill=light_green, font=FONT_SUBSCRIPT, anchor="mm", align="center")
+        elif count_and_rank_gains[i][2] < 0:
+            canvas.text((s//2*3, s*i + s-16), str(count_and_rank_gains[i][2]), fill=light_red, font=FONT_SUBSCRIPT, anchor="mm", align="center")
+        else:
+            pass
+        if count_and_rank_gains[i][1] > 0:
+            canvas.text((s*2 + w//2, s*i + s-16), '+'+str(count_and_rank_gains[i][1]), fill=light_green, font=FONT_SUBSCRIPT, anchor="mm", align="center")
+        elif count_and_rank_gains[i][1] < 0:
+            canvas.text((s*2 + w//2, s*i + s-16), str(count_and_rank_gains[i][1]), fill=light_red, font=FONT_SUBSCRIPT, anchor="mm", align="center")
+        else:
+            pass
+    return canvas
+
+
+def add_power_ranking_icons(count_and_rank_gains, canvas, s, w):
+    same = os.path.join('images', 'power_ranking','same.png')
+    up = os.path.join('images', 'power_ranking','up.png')
+    down = os.path.join('images', 'power_ranking','down.png')
+    new = os.path.join('images', 'power_ranking','new.png')
+
+    for i in range(len(count_and_rank_gains)):
+        if count_and_rank_gains[i][2] == None:
+            img = Image.open(new)
+        elif count_and_rank_gains[i][2] == 0:
+            img = Image.open(same)
+        elif count_and_rank_gains[i][2] > 0:
+            img = Image.open(up)
+        elif count_and_rank_gains[i][2] < 0:
+            img = Image.open(down)
+        canvas.paste(img, (s, s*i), img)
     return canvas
 
 def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacing_hor=92, month='Month', year='Year'):
@@ -226,7 +250,7 @@ def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacin
         counted = make_counter(teams, col)
         if col == 1:
             counted_raw = counted.most_common(len(counted))
-            write_counts_per_id_to_json(path_dict, counted_raw, month=6, year=2024)
+            write_counts_per_id_to_json(path_dict, counted_raw, month=month, year=year)
             counted_range = counted.most_common(rows)
             count_and_rank_gains = make_power_ranking(counted_range, len(counted_raw), month=month, year=year)
 
@@ -262,7 +286,7 @@ def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacin
 
     # paste alternating dark/light bars onto background and write descending ranks
     bg = Image.new("RGBA", (teams_collage.width + s*2, teams_collage.height + pad))
-    for i in range(rows):
+    for i in range(rows_collage):
         dark = 15
         light = 35
         color = (light, light, light, 255) if i % 2 == 0 else (dark, dark, dark, 255)
@@ -275,13 +299,18 @@ def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacin
     bg_with_teams = ImageOps.expand(teams_collage, border=(s*2, pad//2, 0, pad//2), fill=(0, 0, 0, 0))
     bg_with_teams = Image.alpha_composite(bg, bg_with_teams)
 
+    # paste power ranking icons onto bg_with_teams
+    collage = add_power_ranking_icons(count_and_rank_gains, bg_with_teams, s, w)
+
     # Make header
-    header = Image.new("RGBA", (bg_with_teams.width, 256), color=(dark, dark, dark, 255))
+    header = Image.new("RGBA", (collage.width, 256), color=(dark, dark, dark, 255))
     draw = ImageDraw.Draw(header)
     title = 'Most Common Units in Pirate Rumble Top 100'
-    subtitle = f'Championship ({month} {year}) - Defensive Teams'
-    draw.text((bg_with_teams.width//2, 64), title, fill="white", font=FONT, anchor="mm", align="center")
-    draw.text((bg_with_teams.width//2, 112), subtitle, fill="white", font=FONT_SUBTITLE, anchor="mm", align="center")
+    month_abbr = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.']
+    month_num = int(month)
+    subtitle = f'Championship ({month_abbr[month_num-1]} {year}) - Defensive Teams'
+    draw.text((collage.width//2, 64), title, fill="white", font=FONT, anchor="mm", align="center")
+    draw.text((collage.width//2, 112), subtitle, fill="white", font=FONT_SUBTITLE, anchor="mm", align="center")
 
     # draw column titles
     draw.text((s, header.height-48), "RANK", fill="white", font=FONT, anchor="mm", align="center")
@@ -292,9 +321,9 @@ def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacin
         pos_hor += images[i].width + spacing_hor
 
     # paste header onto final
-    final = Image.new("RGBA", (bg_with_teams.width, bg_with_teams.height + header.height))
+    final = Image.new("RGBA", (collage.width, collage.height + header.height))
     final.paste(header, (0, 0))
-    final.paste(bg_with_teams, (0, header.height))
+    final.paste(collage, (0, header.height))
 
     # save image
     now = datetime.datetime.now()
