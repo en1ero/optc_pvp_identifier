@@ -290,7 +290,7 @@ def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacin
         dark = 15
         light = 35
         color = (light, light, light, 255) if i % 2 == 0 else (dark, dark, dark, 255)
-        bg.paste(Image.new("RGBA", (final_width + s, s), color=color), (0, s*i))
+        bg.paste(Image.new("RGBA", (final_width + s*2, s), color=color), (0, s*i))
         ranks = ImageDraw.Draw(bg)
         ranks.text((s//2, s*i + s//2), str(i + 1), fill="gray", font=FONT_RANK, anchor="mm", align="center")
         ranks = write_power_ranking_to_collage(count_and_rank_gains, ranks, i, s, w)
