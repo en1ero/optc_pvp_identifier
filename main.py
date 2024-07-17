@@ -31,7 +31,7 @@ def main(thumbnail_path, screenshot_path, month=7, year=2024):
     buildCollage(matches)
     
     # Counted Units and Combinations
-    build_ranked_collage(teams_list, id_path_dict, rows=25, n_max_units=5, month=month, year=year)
+    build_ranked_collage(teams_list, id_path_dict, rows=100, n_max_units=8, month=month, year=year)
 
 
 
