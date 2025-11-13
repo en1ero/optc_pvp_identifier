@@ -2,6 +2,8 @@ from utils.file_utils import make_file_list, select_unique_files, make_id_path_d
 from utils.image_utils import create_perceptual_hashes, getMatchesFromScreenshots, buildCollage, build_ranked_collage
 from utils.stats_utils import get_ids, make_teams
 from utils.validation import validate_required_files, validate_thumbnail_directory, ValidationError
+from utils.create_teams_grid import create_teams_grid
+from utils.create_compact_teams_grid import create_compact_teams_grid
 import os
 
 
@@ -57,6 +59,11 @@ def main(thumbnail_path, screenshot_path, month=9, year=2025):
         
         # Counted Units and Combinations
         build_ranked_collage(teams_list, id_path_dict, rows=25, n_max_units=5, month=month, year=year)
+        
+        # Generate team grid visualizations
+        print("Generating team grid layouts...")
+        create_teams_grid()
+        create_compact_teams_grid()
         
         print("Analysis completed successfully!")
         

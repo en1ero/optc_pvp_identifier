@@ -144,7 +144,7 @@ def create_teams_grid():
     output_dir = 'results/teams_grid'
     os.makedirs(output_dir, exist_ok=True)
     
-    output_file = os.path.join(output_dir, f'all_teams_grid_{now.strftime("%Y_%m_%d")}.png')
+    output_file = os.path.join(output_dir, f'all_teams_grid_{now.strftime("%Y_%m")}.png')
     canvas.save(output_file)
     
     print(f"Teams grid saved to: {output_file}")

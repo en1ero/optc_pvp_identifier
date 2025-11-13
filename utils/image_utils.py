@@ -464,7 +464,7 @@ def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacin
 
     # save image
     now = datetime.datetime.now()
-    file_name = f'{now.strftime("%Y_%m_%d")}.png'
+    file_name = f'{now.strftime("%Y_%m")}.png'
     result_dir = os.path.join('results', 'ranked_combinations')
     final.save(os.path.join(result_dir, file_name))
     print(f'Collage saved to: {os.path.join(result_dir, file_name)}')
