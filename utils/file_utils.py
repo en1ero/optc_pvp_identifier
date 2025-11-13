@@ -1,12 +1,13 @@
 import os
 from alive_progress import alive_bar
+from utils.constants import EXCLUDED_SUBSTRINGS
 
 def make_file_list(source, file_type):
-    excluded_substrings = ["-STR", "-QCK", "-DEX", "-PSY", "-INT", "-skull", "ship_"]
+    """Create list of files matching type and exclusion criteria"""
     matches = []
     for root, _, filenames in os.walk(source):
         for filename in filenames:
-            if filename.endswith(file_type) and all(substr not in filename for substr in excluded_substrings):
+            if filename.endswith(file_type) and all(substr not in filename for substr in EXCLUDED_SUBSTRINGS):
                 matches.append(os.path.join(root, filename))
     return matches
 

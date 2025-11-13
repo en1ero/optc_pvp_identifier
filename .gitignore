@@ -4,3 +4,13 @@ results/teams
 
 .DS_Store
 results/.DS_Store
+
+.vscode
+
+__pycache__/
+*.pyc
+*.pyo
+
+# Large image directories
+images/screenshots_previous/
+results/export/

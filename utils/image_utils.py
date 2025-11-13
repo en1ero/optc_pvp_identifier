@@ -10,6 +10,11 @@ import datetime
 import json
 
 from utils.stats_utils import make_counter
+from utils.constants import IPHONE_11_PRO, IMAGE_SETTINGS, OVERLAY_COLORS, UNIT_ID_MAPPINGS
+from utils.validation import (
+    validate_screenshot_file, validate_screenshot_dimensions, 
+    validate_anchor_detection, ValidationError
+)
 
 overlay_images = {
         "red": os.path.join('images', 'overlays', 'str.png'),
@@ -21,7 +26,8 @@ overlay_images = {
         "empty": os.path.join('images', 'overlays', 'empty.png')
     }
 
-xy = [910, 950, 460, 530]
+# Use device-specific coordinates
+xy = IPHONE_11_PRO['anchor_coords']
 
 if platform.system() == "Windows":
     FONT = ImageFont.truetype("C:/Windows/Fonts/arialbd.ttf", 50)
@@ -36,35 +42,121 @@ else:
 
 
 def make_anchor_from_image(file_path):
-    ref = cv2.imread(file_path, 0)
-    anchor_img = ref[xy[0]:xy[1], xy[2]:xy[3]]
-    return anchor_img
+    """Create anchor template from reference image with error handling"""
+    try:
+        ref = cv2.imread(file_path, 0)
+        if ref is None:
+            raise ValidationError(f"Could not load anchor image: {file_path}")
+        
+        anchor_img = ref[xy[0]:xy[1], xy[2]:xy[3]]
+        if anchor_img.size == 0:
+            raise ValidationError(f"Invalid anchor coordinates for image: {file_path}")
+        
+        return anchor_img
+    except Exception as e:
+        raise ValidationError(f"Error creating anchor from {file_path}: {str(e)}")
 
+
+def find_anchor_position(img, anchor_img):
+    """Find anchor position in screenshot with validation"""
+    search_area = IPHONE_11_PRO['search_area']
+    search_region = img[:search_area['height'], :search_area['width']]
+    
+    resulting_image = match_template(search_region, anchor_img)
+    validate_anchor_detection(resulting_image)
+    
+    x, y = np.unravel_index(np.argmax(resulting_image), resulting_image.shape)
+    return x, y
+
+def extract_unit_coordinates(anchor_x, anchor_y):
+    """Calculate unit extraction coordinates based on anchor position"""
+    config = IPHONE_11_PRO['team_extraction']
+    
+    # Extract constants for readability
+    captain_offset = config['captain_offset']
+    crew_offset = config['crew_offset'] 
+    row_gap = config['row_gap']
+    unit_gap = config['unit_gap']
+    small_gap = config['small_gap']
+    
+    units_coords = []
+    
+    # Extract coordinates for 3 teams (24 units total)
+    for team in range(3):
+        team_base_x = anchor_x + captain_offset + team * row_gap
+        team_base_y = anchor_y
+        
+        # Captain (1 unit)
+        units_coords.append((
+            team_base_x, team_base_x + 196,  # x1, x2 (253-57=196)
+            team_base_y - 383, xy[3] - 257   # y1, y2
+        ))
+        
+        # Crew members (7 units)
+        crew_base_x = anchor_x + crew_offset + team * row_gap
+        crew_base_y = team_base_y - 178
+        
+        for unit_idx in range(7):
+            if unit_idx < 4:
+                y_offset = unit_idx * unit_gap
+            else:
+                y_offset = unit_idx * unit_gap + small_gap
+                
+            units_coords.append((
+                crew_base_x, crew_base_x + 103,  # x1, x2 (245-142=103)
+                crew_base_y + y_offset, xy[3] - 145 + y_offset  # y1, y2
+            ))
+    
+    return units_coords
+
+def extract_units_from_coordinates(img, units_coords):
+    """Extract unit images from calculated coordinates"""
+    units = []
+    unit_size = IMAGE_SETTINGS['unit_size']
+    
+    for x1, x2, y1, y2 in units_coords:
+        # Validate coordinates are within image bounds
+        if x1 < 0 or x2 >= img.shape[0] or y1 < 0 or y2 >= img.shape[1]:
+            print(f"Warning: Unit coordinates out of bounds: ({x1},{x2},{y1},{y2})")
+            # Create empty unit as fallback
+            unit = np.zeros((unit_size, unit_size), dtype=np.uint8)
+        else:
+            unit = img[x1:x2, y1:y2]
+            if unit.size == 0:
+                print(f"Warning: Empty unit extracted at ({x1},{x2},{y1},{y2})")
+                unit = np.zeros((unit_size, unit_size), dtype=np.uint8)
+            else:
+                unit = cv2.resize(unit, dsize=(unit_size, unit_size), interpolation=cv2.INTER_CUBIC)
+        
+        units.append(unit)
+    
+    return units
 
 def get_team_images(img, anchor_img):
-    resulting_image = match_template(img[:1000, :600], anchor_img)
-    x, y = np.unravel_index(np.argmax(resulting_image), resulting_image.shape)
-
-    # Define the 8 seperate unit areas
-    off = 107
-    off_s = 26
-    x1 = 57
-    gap = 310
-    x2 = 142
-
-    units = []
-    for i in range(3):
-        units.append(img[x+x1+i*gap : x+253+i*gap, y-383 : xy[3]-257])
-        units.append(img[x+x2+i*gap : x+245+i*gap, y-178 : xy[3]-145])
-        units.append(img[x+x2+i*gap : x+245+i*gap, y-178+off : xy[3]-145+off])
-        units.append(img[x+x2+i*gap : x+245+i*gap, y-178+off*2 : xy[3]-145+off*2])
-        units.append(img[x+x2+i*gap : x+245+i*gap, y-178+off*3 : xy[3]-145+off*3])
-        units.append(img[x+x2+i*gap : x+245+i*gap, y-178+off*4+off_s : xy[3]-145+off*4+off_s])
-        units.append(img[x+x2+i*gap : x+245+i*gap, y-178+off*5+off_s : xy[3]-145+off*5+off_s])
-        units.append(img[x+x2+i*gap : x+245+i*gap, y-178+off*6+off_s : xy[3]-145+off*6+off_s])
-
-    resized_units = [cv2.resize(unit, dsize=(112, 112), interpolation=cv2.INTER_CUBIC) for unit in units]
-    return resized_units
+    """Extract team unit images from screenshot with improved error handling"""
+    try:
+        # Validate screenshot dimensions
+        validate_screenshot_dimensions(img)
+        
+        # Find anchor position
+        anchor_x, anchor_y = find_anchor_position(img, anchor_img)
+        
+        # Calculate unit coordinates
+        units_coords = extract_unit_coordinates(anchor_x, anchor_y)
+        
+        # Extract units
+        units = extract_units_from_coordinates(img, units_coords)
+        
+        if len(units) != 24:  # 3 teams * 8 units each
+            print(f"Warning: Expected 24 units, got {len(units)}")
+        
+        return units
+        
+    except ValidationError as e:
+        print(f"Error extracting teams: {e}")
+        raise
+    except Exception as e:
+        raise ValidationError(f"Unexpected error in team extraction: {str(e)}")
 
 
 def get_matches(unit_images, target_hashes, index):
@@ -87,21 +179,52 @@ def get_matches(unit_images, target_hashes, index):
 
 
 def getMatchesFromScreenshots(screenshot_list, target_hashes):
-    anchor_image = make_anchor_from_image('images/anchor.jpeg')
+    """Process all screenshots and return unit matches with error handling"""
+    try:
+        anchor_image = make_anchor_from_image('images/anchor.jpeg')
+        matches = []
+        failed_screenshots = []
+        
+        for index, path in enumerate(screenshot_list):
+            try:
+                screen_shot = validate_screenshot_file(path)
+                unit_images = get_team_images(screen_shot, anchor_image)
+                screenshot_matches = get_matches(unit_images, target_hashes, index)
+                matches.extend(screenshot_matches)
+                
+            except ValidationError as e:
+                print(f"Skipping {path}: {e}")
+                failed_screenshots.append(path)
+                continue
+            except Exception as e:
+                print(f"Unexpected error processing {path}: {e}")
+                failed_screenshots.append(path)
+                continue
+        
+        if failed_screenshots:
+            print(f"\nFailed to process {len(failed_screenshots)} screenshots:")
+            for failed in failed_screenshots:
+                print(f"  - {failed}")
+        
+        if not matches:
+            raise ValidationError("No valid matches found in any screenshots")
+        
+        # Apply unit ID mappings for alternating evolutions
+        matches = apply_unit_mappings(matches)
+        
+        print(f"Successfully processed {len(screenshot_list) - len(failed_screenshots)} screenshots")
+        return matches
+        
+    except Exception as e:
+        raise ValidationError(f"Error processing screenshots: {str(e)}")
 
-    matches = []
-    for index, path in enumerate(screenshot_list):
-        screen_shot = cv2.imread(path, 0)
-        unit_images = get_team_images(screen_shot, anchor_image)
-        matches.extend(get_matches(unit_images, target_hashes, index))
-
-    # Handle Anni Shanks' & Luffy/Yamato's Alternating Pen Evos
+def apply_unit_mappings(matches):
+    """Apply special unit ID mappings for alternating evolutions"""
     for i, match in enumerate(matches):
-        if os.path.basename(match) == "4153.png":
-            matches[i] = os.path.join(os.path.dirname(match), "4152.png")
-        elif os.path.basename(match) == "3877.png":
-            matches[i] = os.path.join(os.path.dirname(match), "3878.png")
-
+        filename = os.path.basename(match)
+        if filename in UNIT_ID_MAPPINGS:
+            new_filename = UNIT_ID_MAPPINGS[filename]
+            matches[i] = os.path.join(os.path.dirname(match), new_filename)
     return matches
 
 
@@ -148,17 +271,12 @@ def buildCollage(matches, s=112, cols=8):
     all_teams.save(os.path.join('results', 'teams', 'all.png'))
     
 
-def get_closest_color(r,g,b):
-    colors = {
-        "red": (248,49,68),
-        "green": (70,164,39),
-        "blue": (3,98,231),
-        "yellow": (255,214,5),
-        "purple": (143,17,210),
-        "black": (81,52,51),
-        "empty": (31, 22, 12)
-    }
-    closest_color = min(colors, key=lambda color: abs(colors[color][0]-r) + abs(colors[color][1]-g) + abs(colors[color][2]-b))
+def get_closest_color(r, g, b):
+    """Find closest overlay color using Manhattan distance"""
+    closest_color = min(
+        OVERLAY_COLORS, 
+        key=lambda color: abs(OVERLAY_COLORS[color][0]-r) + abs(OVERLAY_COLORS[color][1]-g) + abs(OVERLAY_COLORS[color][2]-b)
+    )
     return closest_color
 
 
@@ -181,11 +299,26 @@ def write_counts_per_id_to_json(id_path_dict, counted_raw, month=6, year=2024):
 
 def make_power_ranking(counted_range, current_total, month=None, year=None):
     file_path_current = os.path.join('data', 'counts_per_id_{}_{}.json'.format(month, year))
-    file_path_previous = os.path.join('data', 'counts_per_id_{}_{}.json'.format(month-1, year))
+    
+    # Handle previous month file (might be from previous year)
+    prev_month = month - 1
+    prev_year = year
+    if prev_month == 0:
+        prev_month = 12
+        prev_year = year - 1
+    
+    file_path_previous = os.path.join('data', 'counts_per_id_{}_{}.json'.format(prev_month, prev_year))
+    
     with open(file_path_current, 'r') as fp:
         current = json.load(fp)
-    with open(file_path_previous, 'r') as fp:
-        previous = json.load(fp)
+    
+    # Try to load previous month data, if it doesn't exist, return None to skip power rankings
+    try:
+        with open(file_path_previous, 'r') as fp:
+            previous = json.load(fp)
+    except FileNotFoundError:
+        print(f"No previous month data found ({file_path_previous}). Skipping power ranking features.")
+        return None
 
     count_and_rank_gains = []
     for id_val, _ in counted_range:
@@ -293,14 +426,18 @@ def build_ranked_collage(teams, path_dict, rows=20, n_max_units=5, s=112, spacin
         bg.paste(Image.new("RGBA", (final_width + s*2, s), color=color), (0, s*i))
         ranks = ImageDraw.Draw(bg)
         ranks.text((s//2, s*i + s//2), str(i + 1), fill="gray", font=FONT_RANK, anchor="mm", align="center")
-        ranks = write_power_ranking_to_collage(count_and_rank_gains, ranks, i, s, w)
+        if count_and_rank_gains is not None:
+            ranks = write_power_ranking_to_collage(count_and_rank_gains, ranks, i, s, w)
 
     # paste teams_collage onto bg
     bg_with_teams = ImageOps.expand(teams_collage, border=(s*2, pad//2, 0, pad//2), fill=(0, 0, 0, 0))
     bg_with_teams = Image.alpha_composite(bg, bg_with_teams)
 
-    # paste power ranking icons onto bg_with_teams
-    collage = add_power_ranking_icons(count_and_rank_gains, bg_with_teams, s, w)
+    # paste power ranking icons onto bg_with_teams (only if previous data exists)
+    if count_and_rank_gains is not None:
+        collage = add_power_ranking_icons(count_and_rank_gains, bg_with_teams, s, w)
+    else:
+        collage = bg_with_teams
 
     # Make header
     header = Image.new("RGBA", (collage.width, 256), color=(dark, dark, dark, 255))
