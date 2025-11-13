@@ -2,15 +2,19 @@
 
 results/teams
 
+# macOS files
 .DS_Store
-results/.DS_Store
+**/.DS_Store
 
 .vscode
 
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 
 # Large image directories
 images/screenshots_previous/
-results/export/
+results/export/*.png
+results/export/*.jpg
+results/export/*.jpeg
