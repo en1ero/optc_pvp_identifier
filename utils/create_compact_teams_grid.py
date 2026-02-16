@@ -26,13 +26,13 @@ def create_compact_teams_grid():
     print(f"Original team size: {original_width}x{original_height}")
     print(f"Scaled team size: {team_width}x{team_height}")
     
-    # Calculate grid dimensions
-    grid_width = team_width * cols
-    grid_height = team_height * rows
-    
     # Add space for header and margins
     header_height = 80
     margin = 15
+    
+    # Calculate grid dimensions - account for space between columns
+    grid_width = (team_width * cols) + (margin * (cols - 1))
+    grid_height = team_height * rows
     
     # Create the main canvas
     canvas_width = grid_width + (margin * 2)
