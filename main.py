@@ -3,14 +3,30 @@ from utils.image_utils import create_perceptual_hashes, getMatchesFromScreenshot
 from utils.stats_utils import get_ids, make_teams
 from utils.validation import validate_required_files, validate_thumbnail_directory, ValidationError
 from utils.create_compact_teams_grid import create_compact_teams_grid
+from utils.submodule_utils import checkout_submodule_at_date, SubmoduleError
 import os
 
+
+month = 3
+year = 2026
+submodule_date = "2026-03-16"  # Set to None to skip submodule pinning
 
 
 def main(thumbnail_path, screenshot_path, month=9, year=2025):
     """Main analysis function with comprehensive error handling"""
     try:
         print("Starting OPTC Rumble Analysis...")
+        
+        # Handle submodule checkout if date is specified
+        if submodule_date:
+            submodule_path = 'optc-db.github.io'
+            print(f"Checking out optc-db at date {submodule_date}...")
+            try:
+                commit_hash = checkout_submodule_at_date(submodule_path, submodule_date)
+                print(f"Submodule checked out to commit: {commit_hash[:8]}")
+            except SubmoduleError as e:
+                print(f"Warning: Could not checkout submodule: {e}")
+                print("Continuing without submodule checkout...")
         
         # Validate required files and directories
         print("Validating required files...")
@@ -79,8 +95,6 @@ def main(thumbnail_path, screenshot_path, month=9, year=2025):
 
 
 if __name__ == '__main__':
-    month = 3
-    year = 2026
     thumbnail_path = os.path.join('optc-db.github.io', 'api', 'images', 'thumbnail')
     folder_suffix = f"{str(year)[-2:]}_{str(month).zfill(2)}"
     screenshot_path = os.path.join('images', 'screenshots', folder_suffix)
