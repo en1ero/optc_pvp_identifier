@@ -12,6 +12,3 @@ results/teams
 __pycache__/
 *.pyc
 *.pyo
-
-# Large image directories
-images/screenshots_previous/

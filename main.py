@@ -79,10 +79,13 @@ def main(thumbnail_path, screenshot_path, month=9, year=2025):
 
 
 if __name__ == '__main__':
+    month = 3
+    year = 2026
     thumbnail_path = os.path.join('optc-db.github.io', 'api', 'images', 'thumbnail')
-    screenshot_path = os.path.join('images', 'screenshots')
+    folder_suffix = f"{str(year)[-2:]}_{str(month).zfill(2)}"
+    screenshot_path = os.path.join('images', 'screenshots', folder_suffix)
 
-    success = main(thumbnail_path, screenshot_path, month=2, year=2026)
+    success = main(thumbnail_path, screenshot_path, month=month, year=year)
     if not success:
         exit(1)
     
