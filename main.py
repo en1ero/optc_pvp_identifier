@@ -82,7 +82,7 @@ if __name__ == '__main__':
     thumbnail_path = os.path.join('optc-db.github.io', 'api', 'images', 'thumbnail')
     screenshot_path = os.path.join('images', 'screenshots')
 
-    success = main(thumbnail_path, screenshot_path, month=12, year=2025)
+    success = main(thumbnail_path, screenshot_path, month=2, year=2026)
     if not success:
         exit(1)
     
